@@ -3,61 +3,46 @@ name: Trial Request Notification
 on:
   issues:
     types: [opened, labeled]
-  issue_comment:
-    types: [created]
 
 jobs:
   notify:
-    if: |
-      github.event.issue.labels.*.name contains 'trial-request' ||
-      (github.event.label && github.event.label.name == 'trial-request') ||
-      (github.event.comment && contains(github.event.comment.body, '/trial'))
+    if: github.event.label.name == 'trial-request'
     runs-on: ubuntu-latest
     steps:
-      - name: Send notification
-        run: |
-          echo "🔔 NEW TRIAL REQUEST"
-          echo "Repository: ${{ github.repository }}"
-          echo "Issue: ${{ github.event.issue.html_url }}"
-          echo "Author: ${{ github.event.issue.user.login }}"
-          echo "Title: ${{ github.event.issue.title }}"
-          echo "Body: ${{ github.event.issue.body }}"
+      - name: Send Telegram notification
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          TITLE="${{ github.event.issue.title }}"
+          BODY="${{ github.event.issue.body }}"
+          URL="${{ github.event.issue.html_url }}"
+          curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            -d chat_id="${CHAT_ID}" \
+            -d text="🔔 NEW TRIAL REQUEST: ${TITLE}
 
-      - name: Auto-assign to sales
-        if: github.event.issue.assignee == null
-        run: |
-          gh issue edit ${{ github.event.issue.number }} --add-assignee denis0wn
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+${BODY}
+
+🔗 ${URL}" \
+            -d parse_mode="Markdown"
+
+      - name: Auto-assign to owner
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.addAssignees({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              assignees: ['denis0wn']
+            })
 
       - name: Add welcome comment
-        if: github.event.action == 'opened'
-        run: |
-          gh issue comment ${{ github.event.issue.number }} --body "$(cat <<'EOF'
-          🎉 **Thanks for requesting a DAK trial!**
-
-          We'll prepare your personalized trial binary and send it to the email associated with your GitHub account (or reply here) within **2 hours** during business hours (MSK, UTC+3).
-
-          **What you'll receive:**
-          - ✅ Trial binary for your platform (Linux/macOS/Windows)
-          - ✅ License key (30 days / 1,000 executions)
-          - ✅ Quick-start guide (5-min setup)
-          - ✅ Direct contact for questions
-
-          **While you wait:**
-          - 📖 [Read the full pricing details](PRICING.md)
-          - 📊 [Review benchmark results](Benchmark%20Specification.md)
-          - 🏗️ [Understand the architecture](ARCHITECTURE.md)
-          - 💬 [Message us on Telegram for instant chat](https://t.me/Myagentdenbot)
-
-          **Want to see it live first?**
-          [Book a 30-min technical demo →](https://calendly.com/denis-smoliakov/dak-demo)
-
-          ---
-          *This is an automated response. A human will follow up shortly.*
-          EOF
-          )"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: 'Thanks for requesting a DAK trial! 🎉\n\nI\'ll review your use case and send you a personalized trial binary with license key within 2 hours.\n\nIn the meantime, you can:\n- Try the **Tryss demo binary**: https://github.com/denis0wn/dak/releases/tag/v0.2.0\n- Read the **Quick Start**: https://github.com/denis0wn/dak#quick-start-binary-download\n- Book a **30-min demo**: https://calendly.com/denis-smoliakov/dak-demo\n\nQuestions? Reply here or message @Myagentdenbot on Telegram.'
