@@ -197,7 +197,31 @@ chmod +x dak
 sha256sum dak  # Must match above
 ```
 
-### 2. Run Health Check
+### 🎭 Try the Tryss Demo Binary (No Install Required)
+
+Tryss is the branded demo binary — runs locally, zero config, shows deterministic replay in 30 seconds.
+
+| Platform | Download | Size |
+|----------|----------|------|
+| **Linux x86_64 (musl)** | [tryss-linux-x86_64-musl](https://github.com/denis0wn/dak/releases/download/v0.2.0/tryss-linux-x86_64-musl) | 9.5 MB |
+| **macOS ARM64** | [tryss-macos-aarch64](https://github.com/denis0wn/dak/releases/download/v0.2.0/tryss-macos-aarch64) | 9.2 MB |
+
+```bash
+# Linux/macOS
+curl -L -o tryss https://github.com/denis0wn/dak/releases/download/v0.2.0/tryss-<platform>
+chmod +x tryss
+
+# See the branded banner
+./tryss --brand
+
+# Run a demo task
+./tryss run "Process refund for order #12345"
+
+# Verify deterministic replay
+./tryss verify <task_id>
+```
+
+> **Full Tryss Showcase:** [TRyss_SHOWCASE.md](TRyss_SHOWCASE.md) — Demo scenarios, value props, compliance artifacts, pricing CTA
 
 ```bash
 $ ./dak doctor
