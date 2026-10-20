@@ -13,6 +13,8 @@
 
 ## 🎬 See DAK in Action
 
+![DAK Demo](assets/dak-demo.gif)
+
 ### Live Terminal Demo
 
 ```bash
