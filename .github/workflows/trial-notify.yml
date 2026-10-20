@@ -1,0 +1,63 @@
+name: Trial Request Notification
+
+on:
+  issues:
+    types: [opened, labeled]
+  issue_comment:
+    types: [created]
+
+jobs:
+  notify:
+    if: |
+      github.event.issue.labels.*.name contains 'trial-request' ||
+      (github.event.label && github.event.label.name == 'trial-request') ||
+      (github.event.comment && contains(github.event.comment.body, '/trial'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send notification
+        run: |
+          echo "🔔 NEW TRIAL REQUEST"
+          echo "Repository: ${{ github.repository }}"
+          echo "Issue: ${{ github.event.issue.html_url }}"
+          echo "Author: ${{ github.event.issue.user.login }}"
+          echo "Title: ${{ github.event.issue.title }}"
+          echo "Body: ${{ github.event.issue.body }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Auto-assign to sales
+        if: github.event.issue.assignee == null
+        run: |
+          gh issue edit ${{ github.event.issue.number }} --add-assignee denis0wn
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add welcome comment
+        if: github.event.action == 'opened'
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "$(cat <<'EOF'
+          🎉 **Thanks for requesting a DAK trial!**
+
+          We'll prepare your personalized trial binary and send it to the email associated with your GitHub account (or reply here) within **2 hours** during business hours (MSK, UTC+3).
+
+          **What you'll receive:**
+          - ✅ Trial binary for your platform (Linux/macOS/Windows)
+          - ✅ License key (30 days / 1,000 executions)
+          - ✅ Quick-start guide (5-min setup)
+          - ✅ Direct contact for questions
+
+          **While you wait:**
+          - 📖 [Read the full pricing details](PRICING.md)
+          - 📊 [Review benchmark results](Benchmark%20Specification.md)
+          - 🏗️ [Understand the architecture](ARCHITECTURE.md)
+          - 💬 [Message us on Telegram for instant chat](https://t.me/Myagentdenbot)
+
+          **Want to see it live first?**
+          [Book a 30-min technical demo →](https://calendly.com/denis-smoliakov/dak-demo)
+
+          ---
+          *This is an automated response. A human will follow up shortly.*
+          EOF
+          )"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

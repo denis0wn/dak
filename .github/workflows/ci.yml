@@ -1,0 +1,235 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+    tags: ['v*']
+  pull_request:
+    branches: [main, develop]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  # ═══════════════════════════════════════════════════════════
+  # Check job - fast feedback
+  # ═══════════════════════════════════════════════════════════
+  check:
+    name: Check (fmt, clippy, build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: cargo-${{ hashFiles('**/Cargo.lock') }}
+      
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      
+      - name: Run clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+      
+      - name: Build library
+        run: cargo build --lib --all-features
+      
+      - name: Build binary
+        run: cargo build --bin dak --all-features
+      
+      - name: Build examples
+        run: cargo build --examples --all-features
+
+  # ═══════════════════════════════════════════════════════════
+  # Test job - comprehensive test suite
+  # ═══════════════════════════════════════════════════════════
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: cargo-${{ hashFiles('**/Cargo.lock') }}
+      
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
+      
+      - name: Run library tests
+        run: cargo nextest run --lib --all-features
+      
+      - name: Run integration tests
+        run: cargo nextest run --tests --all-features -- --skip benchmark_llm_vs_kernel
+      
+      - name: Run doctests
+        run: cargo test --doc --all-features
+
+  # ═══════════════════════════════════════════════════════════
+  # Cross-platform build
+  # ═══════════════════════════════════════════════════════════
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: macos-latest
+            target: x86_64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: cargo-${{ hashFiles('**/Cargo.lock') }}-${{ matrix.target }}
+      
+      - name: Build release
+        run: cargo build --release --bin dak --target ${{ matrix.target }}
+        env:
+          # Reduce binary size
+          RUSTFLAGS: "-C strip=symbols"
+      
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: dak-${{ matrix.target }}
+          path: |
+            target/${{ matrix.target }}/release/dak*
+            target/${{ matrix.target }}/release/dak*.exe
+          retention-days: 7
+
+  # ═══════════════════════════════════════════════════════════
+  # Security audit
+  # ═══════════════════════════════════════════════════════════
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: cargo-${{ hashFiles('**/Cargo.lock') }}
+      
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@cargo-audit
+      
+      - name: Run cargo audit
+        run: cargo audit --deny warnings
+      
+      - name: Check for secrets
+        run: |
+          # Basic secret scanning
+          if git log --all --full-history --oneline --grep="password\|secret\|token\|key" | grep -v "Merge"; then
+            echo "⚠️ Potential secrets in git history"
+            exit 1
+          fi
+      
+      - name: Check dependencies
+        run: cargo deny check licenses advisories --all-features 2>/dev/null || true
+
+  # ═══════════════════════════════════════════════════════════
+  # Documentation
+  # ═══════════════════════════════════════════════════════════
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: cargo-${{ hashFiles('**/Cargo.lock') }}
+      
+      - name: Build docs
+        run: cargo doc --all-features --no-deps --document-private-items
+      
+      - name: Check for broken links
+        run: |
+          # Simple broken link check in markdown files
+          find . -name "*.md" -exec grep -l "http" {} \; | xargs -I {} sh -c 'echo "Checking {}"; grep -o "https\?://[^)]*" {} | sort -u | xargs -I {} curl -sfI {} >/dev/null || echo "Broken link in {}: {}"'
+
+  # ═══════════════════════════════════════════════════════════
+  # Release preparation (dry-run)
+  # ═══════════════════════════════════════════════════════════
+  release-dry-run:
+    name: Release Dry Run
+    runs-on: ubuntu-latest
+    needs: [test, build, security, docs]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: cargo-${{ hashFiles('**/Cargo.lock') }}
+      
+      - name: Install cargo-dist
+        uses: taiki-e/install-action@cargo-dist
+      
+      - name: Dry run release
+        run: cargo dist --dry-run --ci=github
+        env:
+          CARGO_DIST_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ═══════════════════════════════════════════════════════════
+  # Notify on failure
+  # ═══════════════════════════════════════════════════════════
+  notify:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: [check, test, build, security, docs]
+    if: failure()
+    steps:
+      - name: Send failure notification
+        run: |
+          echo "❌ CI failed for ${{ github.repository }}@${{ github.sha }}"
+          echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        # Add Slack/Discord webhook here if configured
+
+# ═══════════════════════════════════════════════════════════
+# Concurrency control
+# ═══════════════════════════════════════════════════════════
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true

@@ -1,0 +1,139 @@
+name: "🎫 Trial Request / License Inquiry"
+description: Request a trial binary or ask about licensing
+title: "[Trial] Company: <name> — Use case: <brief>"
+labels: ["trial-request"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Trial Request / License Inquiry
+        Fill out the form below. We'll send a personalized trial binary within 2 hours (business hours MSK).
+
+  - type: input
+    id: company
+    attributes:
+      label: Company / Organization
+      placeholder: "Acme Corp (acme.com)"
+    validations:
+      required: true
+
+  - type: input
+    id: role
+    attributes:
+      label: Your Role
+      placeholder: "CTO / Lead Engineer / Founder"
+    validations:
+      required: true
+
+  - type: textarea
+    id: usecase
+    attributes:
+      label: Primary Use Case
+      description: 1-2 sentences describing the problem you're solving
+      placeholder: "We need deterministic AI agents for automated code review in our CI/CD pipeline..."
+    validations:
+      required: true
+
+  - type: input
+    id: executions
+    attributes:
+      label: Expected Monthly Executions
+      placeholder: "10K / 100K / 1M+"
+    validations:
+      required: true
+
+  - type: input
+    id: team
+    attributes:
+      label: Team Size (developers using DAK)
+      placeholder: "2 / 5 / 10+"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Target Platform(s)
+      options:
+        - Linux (x86_64)
+        - macOS (ARM64 / Apple Silicon)
+        - Windows (x86_64)
+        - Kubernetes
+        - Other
+      multiple: true
+    validations:
+      required: true
+
+  - type: dropdown
+    id: llm
+    attributes:
+      label: Current LLM Provider(s)
+      options:
+        - OpenAI
+        - Anthropic
+        - Ollama (local)
+        - Custom / Fine-tuned
+        - Multiple / Evaluating
+      multiple: true
+
+  - type: dropdown
+    id: cicd
+    attributes:
+      label: CI/CD Platform
+      options:
+        - GitHub Actions
+        - GitLab CI
+        - Jenkins
+        - CircleCI
+        - Custom / Other
+      multiple: true
+
+  - type: dropdown
+    id: tier
+    attributes:
+      label: License Tier Interest
+      options:
+        - Trial (30 days / 1K executions)
+        - Professional ($2,990/yr/seat)
+        - Enterprise ($14,990/yr, 10 seats)
+        - Custom / OEM / White-label
+      multiple: true
+    validations:
+      required: true
+
+  - type: input
+    id: timeline_decide
+    attributes:
+      label: Decision Timeline
+      placeholder: "This week / Next month / Q1 2025"
+
+  - type: input
+    id: timeline_deploy
+    attributes:
+      label: Production Deployment Target
+      placeholder: "Immediately / 3 months / Q2 2025"
+
+  - type: textarea
+    id: questions
+    attributes:
+      label: Questions / Special Requirements
+      description: Technical, compliance, or commercial questions
+      placeholder: "Need SOC2 compliance artifacts... / Air-gapped deployment... / Custom provider integration..."
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        ### What Happens Next
+        1. **Within 2 hours (business hours MSK):** Personalized trial binary + license key via email
+        2. **Optional:** 30-min technical demo — [book here](https://calendly.com/denis-smoliakov/dak-demo)
+        3. **Decision:** Reply to trial email with tier choice → receive invoice
+        4. **Onboarding:** License key + source access (Pro+) + Slack invite (Ent+)
+
+        ### Quick Links
+        - 📖 [Full Pricing Details](PRICING.md)
+        - 📄 [License Terms](LICENSE)
+        - 📊 [Benchmark Results](Benchmark%20Specification.md)
+        - 🏗️ [Architecture Overview](ARCHITECTURE.md)
+        - 💬 [Telegram (fastest)](https://t.me/Myagentdenbot)
