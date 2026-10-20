@@ -56,7 +56,7 @@ You'll get:
 ## Request Now
 
 ### 📋 GitHub Issue (Recommended)
-[**Open Trial Request Issue →**](https://github.com/denis0wn/deterministic_ai_kernel/issues/new?template=trial_request.yml)
+[**Open Trial Request Issue →**](https://github.com/denis0wn/dak/issues/new?template=trial_request.yml)
 
 ### 📧 Email
 ```
@@ -108,4 +108,4 @@ A: We evaluate case-by-case. Email with project details.
 
 ---
 
-**Ready? [Request your trial now →](https://github.com/denis0wn/deterministic_ai_kernel/issues/new?template=trial_request.yml)**
+**Ready? [Request your trial now →](https://github.com/denis0wn/dak/issues/new?template=trial_request.yml)**
